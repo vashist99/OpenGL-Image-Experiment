@@ -13,3 +13,7 @@ You will need OpenGL and OpenCV installed for C++ in your machine
 `` $g++ Imageart.cpp -lglut -lGLU -lGL `pkg-config --cflags --libs opencv`  ``
 
 `$./a.out`
+
+## Results:
+![alt text](https://github.com/[username]/[reponame]/blob/[branch]/image.jpg?raw=true)
+
