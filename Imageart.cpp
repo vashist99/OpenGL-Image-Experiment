@@ -12,16 +12,16 @@ const int WINDOW_WIDTH = 800;
 const int WINDOW_HEIGHT = 600;
 const int SPIRAL_SIZE = 200;
 
+// for color images
 // Mat_<Vec3b> image;
-// for gray scale images
+//  for gray scale images
 Mat image;
 
 std::vector<float> m;
 
 void draw_color(Mat_<Vec3b> img)
-{
-    // more you increase the point size, more it resembles an image and less of a dot-art
-    glPointSize(3.0);
+{ // more you increase the point size, more it resembles an image and less of a dot-art
+    glPointSize(1);
     glClearColor(0.0, 0.0, 0.0, 1.0);
     glClear(GL_COLOR_BUFFER_BIT);
     // glColor3f(1.0, 1.0, 1.0);
@@ -31,8 +31,8 @@ void draw_color(Mat_<Vec3b> img)
     {
 
         for (int j = 0; j < img.cols; j++)
-        { // tweak the space between the columns of dots
-            m[0] += 0.006;
+        { // tweak the space between the columns of dots.
+            m[0] += 0.003;
             // Draw the point
 
             glBegin(GL_POINTS);
@@ -49,8 +49,9 @@ void draw_color(Mat_<Vec3b> img)
 
             // std::cout << "haha\n";
         }
-        // tweak the space between the rwos of dots:
+        // tweak the space between rows of dots
         m[1] -= 0.006;
+        // If line 179 has been changed, change this accordingly
         m[0] = -0.008 * float(image.cols / 2);
     }
 
@@ -60,6 +61,85 @@ void draw_color(Mat_<Vec3b> img)
 
 // To Draw Grey scale Image
 
+Mat padding(Mat image, int padding)
+{
+    Mat padded;
+
+    padded.create(image.rows + 2 * padding, image.cols + 2 * padding, image.type());
+    padded.setTo(cv::Scalar::all(0));
+
+    image.copyTo(padded(Rect(padding, padding, image.cols, image.rows)));
+
+    return padded;
+}
+
+// Edge Detection for greyscale images
+Mat edge_detection(Mat image)
+{
+    // image.convertTo(image, CV_32F);
+    int data1[25] = {0, 0, -1, 0, 0, 0, -1, -2, -1, 0, -1, -2, 16, -2, -1, 0, -1, -2, -1, 0, 0, 0, -1, 0, 0};
+    cv::Mat laplace_filter = cv::Mat(5, 5, CV_32SC1, data1);
+
+    int data2[25] = {2, 4, 5, 4, 2, 4, 9, 12, 9, 4, 5, 12, 15, 12, 5, 4, 9, 12, 9, 4, 2, 4, 5, 4, 2};
+    cv::Mat gauss_filter = cv::Mat(5, 5, CV_32SC1, data2);
+
+    int data3_horizontal[9] = {-1, 0, 1, -2, 0, 2, -1, 0, 1};
+    cv::Mat sobel_filter_horizontal = cv::Mat(3, 3, CV_32SC1, data3_horizontal);
+
+    int data3_vertical[9] = {-1, -2, -1, 0, 0, 0, 1, 2, 1};
+    cv::Mat sobel_filter_vertical = cv::Mat(3, 3, CV_32SC1, data3_vertical);
+
+    int padding_size = 1;
+    image = padding(image, padding_size);
+
+    // std::cout << "type: " << image.type() << "\n";
+
+    // smoothing
+    // cv::Mat smoothed_image;
+    // cv::filter2D(image, smoothed_image, -1, gauss_filter, cv::Point(-1, -1), 0, cv::BORDER_DEFAULT);
+
+
+    for (int i = padding_size; i < image.rows - padding_size; i++)
+    {
+        for (int j = padding_size; j < image.cols - padding_size; j++)
+        {
+            float horizontal_sum = 0.0;
+            float vertical_sum = 0.0;
+
+            for (int i1 = -padding_size; i1 <= padding_size; i1++)
+            {
+                for (int j1 = -padding_size; j1 <= padding_size; j1++)
+                {
+                    horizontal_sum += image.at<uchar>(i + i1, j + j1) * sobel_filter_horizontal.at<int>(i1 + padding_size, j1 + padding_size);
+                    vertical_sum += image.at<uchar>(i + i1, j + j1) * sobel_filter_vertical.at<int>(i1 + padding_size, j1 + padding_size);
+                    //  std::cout << image.at<float>(i + i1, j + j1) << " " << sobel_filter_horizontal.at<float>(i1 + 1, j1 + 1) << " " << sobel_filter_vertical.at<float>(i1 + 1, j1 + 1) << "\n";
+                }
+            }
+
+            image.at<uchar>(i - padding_size, j - padding_size) = sqrt(horizontal_sum * horizontal_sum + vertical_sum * vertical_sum);
+        }
+    }
+
+    return image;
+}
+
+// invert image
+Mat invert(Mat image)
+{
+    for (int i = 0; i < image.rows; i++)
+    {
+        for (int j = 0; j < image.cols; j++)
+        {
+            image.at<uchar>(i, j) = 225 - image.at<uchar>(i, j);
+            if (image.at<uchar>(i, j) != 0)
+            {
+                image.at<uchar>(i, j) -= 40;
+            }
+        }
+    }
+    return image;
+}
+
 // image segmentation for greyscale image
 Mat image_segmentation(Mat image)
 {
@@ -67,7 +147,7 @@ Mat image_segmentation(Mat image)
     {
         for (int j = 0; j < image.cols; j++)
         {
-            if (image.at<uchar>(i, j) < 128)
+            if (image.at<uchar>(i, j) < 100)
             {
                 image.at<uchar>(i, j) = 0;
             }
@@ -95,7 +175,7 @@ void draw_grey_scale(Mat img)
 
         for (int j = 0; j < img.cols; j++)
         {
-            m[0] += 0.006;
+            m[0] += 0.002;
             // Draw the point
 
             if (img.at<uchar>(i, j) == 255)
@@ -107,9 +187,10 @@ void draw_grey_scale(Mat img)
                 // glFlush();
             }
         }
-        m[1] -= 0.006;
-        // If line 173 has been changed, change this accordingly
-        m[0] = -0.008 * float(image.cols / 2);
+
+        m[1] -= 0.002;
+        // If line 179 has been changed, change this accordingly
+        m[0] = -0.002 * float(image.cols / 2);
     }
 
     // Swap the back and front buffers
@@ -130,12 +211,17 @@ void print(int x, int y, int z, std::string name)
     }
 };
 
-void display()
+void display_grey_scale()
 {
 
-    draw_color(image);
-    // draw_grey_scale(image);
+    draw_grey_scale(image);
+
     // print(0, 0, 0, "Vashist");
+}
+
+void display_colour()
+{
+    draw_color(image);
 }
 
 int main(int argc, char **argv)
@@ -152,28 +238,54 @@ int main(int argc, char **argv)
     // Set the window title
     glutCreateWindow("Image Art");
 
-    // image reading and segmentation:
-    //  Read the image file. uncomment IMREAD_GRAYSCALE for reading in grey scale
-    image = imread("chris_cornell.png", /*IMREAD_GRAYSCALE*/);
+    std::cout << "Enter the option you want to choose:\n1) Show the coloured Image\n2) Show the segmented grey Scale Image\n3) Show Edge detection of the Grey Scale Image.\n";
 
-    // Read Colour Image
-    // image = imread("ayushi.png");
+    int option;
+    std::cin >> option;
 
-    // segmentation of greyscale image
-    // image = image_segmentation(image);
+    switch (option)
+    {
+    case 1:
+        // Read Colour Image
+        image = imread("chris_cornell.jpeg");
+        glutDisplayFunc(display_colour);
+        break;
+
+    case 2:
+        //  Read the image file. uncomment IMREAD_GRAYSCALE for reading in grey scale
+        image = imread("chris_cronell.jpeg", IMREAD_GRAYSCALE);
+        // segmentation of greyscale image
+        image = image_segmentation(image);
+        imwrite("cornellMod.jpg", image);
+        glutDisplayFunc(display_grey_scale);
+        break;
+
+    case 3:
+        //  Read the image file. uncomment IMREAD_GRAYSCALE for reading in grey scale
+        image = imread("chris_cornell.jpeg", IMREAD_GRAYSCALE);
+        // segmentation of greyscale image
+        image = edge_detection(image);
+        // invert the image
+        image = invert(image);
+        imwrite("cornellModgauss1.jpeg", image);
+        glutDisplayFunc(display_grey_scale);
+        break;
+
+    default:
+        break;
+    }
 
     // test
     //  std::cout << image.rows << " " << image.cols << "\n";
 
     // save image
-    // imwrite("chris_cornell_mod.jpeg", image);
 
-    // Set the display function
-    glutDisplayFunc(display);
+    // // Set the display function
+    // glutDisplayFunc(display);
 
-    // while changing line 173 change line 111 accordingly
-    m.push_back(-0.005 * float(image.cols / 2));
-    m.push_back(0.005 * float(image.rows / 2));
+    m.push_back(0.002 * float(image.cols / 2));
+    // change accrdingly in draw_color or draw_grey_scale
+    m.push_back(0.0018 * float(image.rows / 2));
 
     // Enter the main loop
     glutMainLoop();
