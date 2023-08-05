@@ -10,7 +10,7 @@ You will need OpenGL and OpenCV installed for C++ in your machine
 
 ## How to run:
 
-`` $g++ Imageart.cpp -ltiff -lglut -lGLU -lGL `pkg-config --cflags --libs opencv`  ``
+`` $g++ Imageart.cpp -lcurl -lgdal -ltiff -lglut -lGLU -lGL `pkg-config --cflags --libs opencv`  ``
 
 `$./a.out`
 
